@@ -6,15 +6,16 @@ import obspython as obs
 
 site.main()
 
-genlyric = None # generator for lyric
-genlyricResult = '' # now generator result
-global_source = '' # lyric display source
-lrcMode = False # LRC AutoSync Mode
-startime = None # song start time (used in AutoSync)
-lastSongname = '' # last song name for delect song progress
-delectSourcename = '' # AutoSync Source name
-lyricfileraw = '' # lyrics file content
-TEXT_SOURCE = ("text_gdiplus", "text_ft2_source") # Const Var for text filter in source type
+genlyric = None  # generator for lyric
+genlyricResult = ''  # now generator result
+global_source = ''  # lyric display source
+lrcMode = False  # LRC AutoSync Mode
+startime = None  # song start time (used in AutoSync)
+lastSongname = ''  # last song name for delect song progress
+delectSourcename = ''  # AutoSync Source name
+lyricfileraw = ''  # lyrics file content
+# Const Var for text filter in source type
+TEXT_SOURCE = ("text_gdiplus", "text_ft2_source")
 
 
 def lnext():
@@ -23,20 +24,20 @@ def lnext():
     if not genlyricResult:
         return genlyricResult
     try:
-        a = next(genlyric) # get next lyric
+        a = next(genlyric)  # get next lyric
     except StopIteration:
-        a = genlyricResult # lyrics end
-    
+        a = genlyricResult  # lyrics end
+
     genlyricResult = a
 
 
-def mnext(pressed): # manual next
+def mnext(pressed):  # manual next
     if pressed:
-        lnext() # next lyric
+        lnext()  # next lyric
         sync_lyric()
 
 
-def lyricgentor(textlyrics): # lyrics generator type
+def lyricgentor(textlyrics):  # lyrics generator type
     index = 0
 
     while True:
@@ -46,7 +47,7 @@ def lyricgentor(textlyrics): # lyrics generator type
         index += 1
 
 
-def add_souce_list(props, name, description, filters): # Add "Source Name" combo box prop
+def add_souce_list(props, name, description, filters):  # Add "Source Name" combo box prop
     p = obs.obs_properties_add_list(
         props, name, description,
         obs.OBS_COMBO_TYPE_EDITABLE, obs.OBS_COMBO_FORMAT_STRING)
@@ -65,14 +66,14 @@ def add_souce_list(props, name, description, filters): # Add "Source Name" combo
     return p
 
 
-def parse_lrc(startTime: datetime.time, nowTime: datetime.time, content: str): # parse lrc
+def parse_lrc(startTime: datetime.time, nowTime: datetime.time, content: str):  # parse lrc
     global genlyricResult
     result = ''
     lyrics = content.splitlines(False)
     for idd in range(len(lyrics)):
         i = lyrics[idd]
-        timestr = i[i.find(']')+1:i.find(']')] # now line lyric timedelta
-        processtime = nowTime-startTime # now timedelta
+        timestr = i[i.find(']')+1:i.find(']')]  # now line lyric timedelta
+        processtime = nowTime-startTime  # now timedelta
         a = timestr.split(':')
         lyrictime = datetime.timedelta(minutes=int(
             a[0]), seconds=int(a[1]), milliseconds=int(a[2]))
@@ -86,26 +87,24 @@ def parse_lrc(startTime: datetime.time, nowTime: datetime.time, content: str): #
     genlyricResult = result
 
 
-def sync_lyric(): # sync now lyric to source
+def sync_lyric():  # sync now lyric to source
     global startime
-    if lrcMode: # if enabled AutoSync
+    if lrcMode:  # if enabled AutoSync
         source = obs.obs_get_source_by_name(delectSourcename)
         settings = obs_source_get_settings(source)
-        name = obs.obs_data_get_string(settings,"text")
+        name = obs.obs_data_get_string(settings, "text")
         obs.obs_data_release(settings)
         obs.obs_source_release(source)
-        if lastSongname != name: # if song changed
-            startime = datetime.datetime.now() # restore song start time
-        
+        if lastSongname != name:  # if song changed
+            startime = datetime.datetime.now()  # restore song start time
+
         settings = obs.obs_data_create()
-        obs.obs_data_set_string(settings, "text", parse_lrc(startime, datetime.datetime.now(),lyricfileraw)) # parse now lryic
+        obs.obs_data_set_string(settings, "text", parse_lrc(
+            startime, datetime.datetime.now(), lyricfileraw))  # parse now lryic
         source = obs.obs_get_source_by_name(source_name)
         obs.obs_source_update(source, settings)
         obs.obs_data_release(settings)
         obs.obs_source_release(source)
-        
-
-
 
     src_settings = obs.obs_source_get_settings(global_source)
     obs.obs_data_set_string(src_settings, "text", genlyricResult)
@@ -129,8 +128,10 @@ def script_description():
         "Display current song as a text on your screen." + \
         "<hr>"
 
+
 def sync(prop, propy):
     startime = datetime.datetime.now()
+
 
 def script_properties():
     props = obs.obs_properties_create()
@@ -142,8 +143,16 @@ def script_properties():
     obs.obs_properties_add_bool(
         props, "autosync", "AutoSync with Now Playing")
     add_souce_list(props, 'source', 'Source Name:', TEXT_SOURCE)
-    add_souce_list(props, 'syncsource', 'Sync Source Name(Only used when AutoSync enbaled):', TEXT_SOURCE)
+    add_souce_list(props, 'syncsource',
+                   'Sync Source Name(Only used when AutoSync enbaled):', TEXT_SOURCE)
     obs.obs_properties_add_button(props, "sync", "Sync start time to now time")
+
+
+def read_file(path, encoding="utf-8"):
+    content = ''
+    with open(path, 'r', encoding=encoding) as f:
+        content = f.read()
+    return content
 
 
 def script_update(settings):
@@ -151,8 +160,9 @@ def script_update(settings):
         obs.timer_add(sync_lyric, obs.obs_data_get_int("check_frequency"))
     else:
         obs.timer_remove(sync_lyric)
-    
-    if os.path.splitext(obs.obs_data_get_string("file"))[-1]=='.lrc':
+
+    if os.path.splitext(obs.obs_data_get_string("file"))[-1] == '.lrc':
         if obs.obs_data_get_bool('autosync'):
             lrcMode = True
-
+            lyricfileraw = read_file(obs.obs_data_get_string("file"))
+        else:
