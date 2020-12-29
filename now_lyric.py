@@ -114,12 +114,12 @@ def sync_lyric():  # sync now lyric to source
 
 def script_load(settings):
     obs.obs_hotkey_register_frontend(
-        "lyric_next", "Next Lyric(Manual Mode)", mnext)
+        "lyric_next", "Next Lyric(Manual Mode)", mnext) # register hotkey
 
 
 def script_unload():
-    obs.obs_hotkey_unregister(mnext)
-    obs.timer_remove(sync_lyric)
+    obs.obs_hotkey_unregister(mnext) # unreg hotkey
+    obs.timer_remove(sync_lyric) # remove timer
 
 
 def script_description():
@@ -130,7 +130,7 @@ def script_description():
 
 
 def sync(prop, propy):
-    startime = datetime.datetime.now()
+    startime = datetime.datetime.now() # sync start time to now time for AutoSync
 
 
 def script_properties():
@@ -145,10 +145,10 @@ def script_properties():
     add_souce_list(props, 'source', 'Source Name:', TEXT_SOURCE)
     add_souce_list(props, 'syncsource',
                    'Sync Source Name(Only used when AutoSync enbaled):', TEXT_SOURCE)
-    obs.obs_properties_add_button(props, "sync", "Sync start time to now time")
+    obs.obs_properties_add_button(props, "sync", "Sync start time to now time(Only used when AutoSync enbaled)")
 
 
-def read_file(path, encoding="utf-8"):
+def read_file(path, encoding="utf-8"): # read the file and return the content
     content = ''
     with open(path, 'r', encoding=encoding) as f:
         content = f.read()
@@ -157,12 +157,32 @@ def read_file(path, encoding="utf-8"):
 
 def script_update(settings):
     if obs.obs_data_get_bool(settings, "enabled") is True:
-        obs.timer_add(sync_lyric, obs.obs_data_get_int("check_frequency"))
+        obs.timer_add(sync_lyric, obs.obs_data_get_int("check_frequency")) # sync lyric to source timer
     else:
         obs.timer_remove(sync_lyric)
 
-    if os.path.splitext(obs.obs_data_get_string("file"))[-1] == '.lrc':
-        if obs.obs_data_get_bool('autosync'):
+    if os.path.splitext(obs.obs_data_get_string("file"))[-1] == '.lrc': # if it is a .LRC file
+        if obs.obs_data_get_bool('autosync'): # if AutoSync enabled
             lrcMode = True
-            lyricfileraw = read_file(obs.obs_data_get_string("file"))
+            lyricfileraw = read_file(obs.obs_data_get_string("file")).rstrip()
         else:
+            # process lrcfile to plain text when AutoSync unenabled and it is a .LRC file
+            # Oh god, please excuse me, because this naming style is so stupid
+            # yemp: file content(raw)
+            # yemp2: yemp but spilt every line
+            # yemp22: listed yemp2
+            lrcMode = False
+            yemp = read_file(obs.obs_data_get_string('file')).rstrip()
+            yemp2 = yemp.splitlines(False)
+            for i in range(len(yemp2)):
+                yemp22 = list(yemp2[i])
+                del yemp22[0:(yemp2[i].find(']')+1)] # remove timedelta
+                yemp2[i] = ''.join(yemp22) # restore it to yemp2
+            
+            lyricfileraw = '\n'.join(yemp2) # restore it to lyricfileraw
+            
+    else:
+        lrcMode = False
+        lyricfileraw = read_file(obs.obs_data_get_string('file')).rstrip()
+
+                
